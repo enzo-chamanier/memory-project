@@ -25,8 +25,6 @@
         <router-link to="/about" custom v-slot="{ navigate }">
           <li @click="navigate">Category 1</li>
         </router-link>
-        <router-link to="/2"><li>Category 2</li></router-link>
-        <router-link to="/3"><li>Category 3</li></router-link>
       </ul>
     </div>
   </div>
