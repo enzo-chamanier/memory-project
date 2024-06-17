@@ -5,10 +5,14 @@
       <button @click="openModalCreate" class="plusCreate">+</button>
     </div>
     <ul>
-      <li class="licat" v-for="category in categories" :key="category.id"
+      <li class="licat" 
+          v-for="category in categories" 
+          :key="category.id"
           @click="selectCategory(category)"
-          :class="{'active-category': selectedCategory && category.id === selectedCategory.id}">
-        {{ category.name }}
+          @contextmenu.prevent="markForDeletion(category)"
+          :class="{'active-category': selectedCategory && category.id === selectedCategory.id,
+                   'marked-for-deletion': category.markedForDeletion}">
+        {{ category.markedForDeletion ? 'Supprimer  "' : '' }}{{ category.name }}{{ category.markedForDeletion ? '"' : '' }}
       </li>
     </ul>
 
@@ -41,7 +45,7 @@
 </template>
 
 <script>
-import { addCategory, getCategories, getThemesForCategory } from '@/store/indexedDB';
+import { addCategory, getCategories, getThemesForCategory, deleteCategory } from '@/store/indexedDB';
 
 export default {
   name: 'CategoriesComponent',
@@ -55,7 +59,7 @@ export default {
     };
   },
   methods: {
-      showAddThemeModal() {
+    showAddThemeModal() {
       this.$emit('showModal', 'addTheme');
     },
     openModalCreate() {
@@ -74,9 +78,28 @@ export default {
       this.newCategoryName = '';
       this.closeModal();
     },
-    selectCategory(category) {
-      this.selectedCategory = category;
-      this.loadThemes(category.id);
+    markForDeletion(category) {
+      this.categories = this.categories.map(cat => {
+        if (cat.id === category.id) {
+          return { ...cat, markedForDeletion: !cat.markedForDeletion };
+        }
+        return cat;
+      });
+    },
+     selectCategory(category) {
+      if (category.markedForDeletion) {
+        deleteCategory(category.id).then(() => {
+          this.categories = this.categories.filter(cat => cat.id !== category.id);
+          if (this.categories.length === 0) {
+            this.$router.push('/');
+          }
+        }).catch(error => {
+          console.error("Failed to delete category", error);
+        });
+      } else {
+        this.selectedCategory = category;
+        this.loadThemes(category.id);
+      }
     },
     loadThemes(categoryId) {
       getThemesForCategory(categoryId).then(themes => {
@@ -98,6 +121,13 @@ export default {
       });
     }
   },
+  watch: {
+    categories() {
+      if (this.categories.length === 0) {
+        this.$router.push('/');
+      }
+    }
+  },
   mounted() {
     this.loadCategories();
   }
@@ -107,6 +137,10 @@ export default {
 
 <style scoped>
 
+.marked-for-deletion {
+  background-color: rgb(181, 30, 30) !important; /* Fond rouge pour les éléments à supprimer */
+  color: white !important; /* Texte rouge pour les éléments à supprimer */
+} 
 .licat {
     cursor: pointer;
     padding: 10px;

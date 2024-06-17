@@ -10,47 +10,54 @@
           <button type="submit">Créer</button>
         </form>
       </div>
-     <button @click="goToDashboard">Mes catégories</button>
+    <button v-if="categories.length > 0" @click="goToDashboard">Mes catégories</button>
 </template>
 
 <script>
-import { addCategory } from '@/store/indexedDB';
+import { addCategory, getCategories } from '@/store/indexedDB';
 
 export default {
   name: 'HomePage',
   data() {
     return {
+      categories: [], // Assurez-vous d'avoir un tableau categories initialisé
       categoryName: '',
       isModalOpen: false,
       isDashboardOpen: false
     }
   },
+  mounted() {
+    this.loadCategories(); // Chargez les catégories dès le montage du composant
+  },
   methods: {
+    loadCategories() {
+      getCategories().then(categories => {
+        this.categories = categories;
+      }).catch(error => {
+        console.error("Failed to fetch categories", error);
+      });
+    },
     async createCategory() {
       if (this.categoryName.trim()) {
-        await addCategory({ name: this.categoryName });
+        const response = await addCategory({ name: this.categoryName });
+        this.categories.push(response); // Ajouter la nouvelle catégorie au tableau local
         this.categoryName = '';
-        window.location.href = '/dashboard';
-
+        this.$router.push('/dashboard');
       }
     },
     goToDashboard() {
       this.$router.push('/dashboard');
-      this.isDashboardModalOpen = true;
-      this.isModalOpen = false; // Fermer le modal de création de catégorie lors de l'ouverture du dashboard
     },
     openModalCreate() {
       this.isModalOpen = true;
-      this.isDashboardModalOpen = false; // Fermer le modal du dashboard lors de l'ouverture de celui de création
     },
     closeModal() {
       this.isModalOpen = false;
-      this.isDashboardModalOpen = false; // Fermer tous les modaux
     }
   }
-  
 }
 </script>
+
 
 
 <style>

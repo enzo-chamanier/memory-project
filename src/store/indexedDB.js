@@ -13,34 +13,40 @@ const dbPromise = openDB('memory-project', 1, {
 });
 
 
+// CRUD FUNCTIONS
+
+
+// Permet de récupérer toutes les catégories
 export async function getCategories() {
   return (await dbPromise).getAll('categories');
 }
 
+// Permet d'ajouter une catégorie
 export async function addCategory(category) {
   return (await dbPromise).add('categories', category);
 }
 
+// Permet de supprimer une catégorie
 export async function deleteCategory(id) {
   const db = await dbPromise;
-  const tx = db.transaction(['categories', 'themes'], 'readwrite');
-  tx.objectStore('themes').index('categoryId').openCursor(IDBKeyRange.only(id)).then(cursor => {
-    return cursor ? cursor.delete().then(() => cursor.continue().then(cursor => cursor && cursor.delete())) : Promise.resolve();
-  });
-  await tx.objectStore('categories').delete(id);
+  const tx = db.transaction('categories', 'readwrite'); 
+  tx.objectStore('categories').delete(id);
   return tx.done;
 }
 
+// Permet d'ajouter un thème
 export async function addTheme(theme) {
   return (await dbPromise).add('themes', theme);
 }
 
+// Permet de recupérer les thèmes pour une catégorie
 export async function getThemesForCategory(categoryId) {
   const db = await dbPromise;
   const index = db.transaction('themes').objectStore('themes').index('categoryId');
   return index.getAll(categoryId);
 }
 
+// Permet de supprimer un thème
 export async function deleteTheme(id) {
   return (await dbPromise).delete('themes', id);
 }
