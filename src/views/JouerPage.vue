@@ -14,44 +14,42 @@
         <h2>Votre thème : {{ selectedTheme.title }}</h2>
         <div class="backgrey">
           <div class="theme-actions">
-            <button @click="home">Home</button>
+            <button @click="home">Accueil</button>
             <button @click="showCreateCardModal = true">Créer une carte</button>
-
             <!-- Modal Popup for Creating Card -->
             <div v-if="showCreateCardModal" class="modal">
               <div class="modal-content">
                 <div class="modal-header">
                   <h3>Créer une nouvelle carte</h3>
-                  <span class="close" @click="showCreateCardModal = false">&times;</span>
+                  <span class="close" @click="closeModal">&times;</span>
                 </div>
-
                 <form @submit.prevent="createCard">
-                  <input type="text" v-model="newCardTitle" placeholder="Titre de la carte">
+                  <div>
+                    <label for="cardFront">Recto de la carte (Question):</label>
+                    <input type="text" id="cardFront" v-model="newCardFront" placeholder="Question" required>
+                  </div>
+                  <div>
+                    <label for="cardBack">Verso de la carte (Réponse):</label>
+                    <input type="text" id="cardBack" v-model="newCardBack" placeholder="Réponse" required>
+                  </div>
                   <button type="submit">Ajouter</button>
                 </form>
               </div>
             </div>
-
             <button @click="launchSession">Lancer la session de révision</button>
-
-
           </div>
           <div class="level-selector">
             <input type="radio" id="level1" name="level" value="1" v-model="selectedLevel">
-            <label for="level1">Niveau 1</label>
-
+            <label for="level1">Novice</label>
             <input type="radio" id="level2" name="level" value="2" v-model="selectedLevel">
-            <label for="level2">Niveau 2</label>
-
+            <label for="level2">Bof</label>
             <input type="radio" id="level3" name="level" value="3" v-model="selectedLevel">
-            <label for="level3">Niveau 3</label>
-
+            <label for="level3">Ça va</label>
             <input type="radio" id="level4" name="level" value="4" v-model="selectedLevel">
-            <label for="level4">Niveau 4</label>
+            <label for="level4">Je maîtrise</label>
           </div>
         </div>
       </div>
-
     </section>
     <section v-else class="theme-details">
       <p>Veuillez sélectionner un thème pour voir les détails.</p>
@@ -60,7 +58,7 @@
 </template>
 
 <script>
-import { getThemes } from '@/store/indexedDB';
+import { getThemes, addCard } from '@/store/indexedDB';
 
 export default {
   data() {
@@ -70,14 +68,15 @@ export default {
       selectedLevel: 1,
       levels: [1, 2, 3, 4],
       showCreateCardModal: false,
-      newCardTitle: ''
+      newCardFront: '',
+      newCardBack: ''
     };
   },
   created() {
     this.loadThemes();
   },
   methods: {
-    async loadThemes() {
+        async loadThemes() {
       try {
         this.themes = await getThemes();
         this.selectThemeById();
@@ -105,17 +104,30 @@ export default {
     home() {
       this.$router.push('/');
     },
-    createCard() {
-      console.log('Creating card with title:', this.newCardTitle);
-      // Add logic to create a card here
-      this.showCreateCardModal = false; // close modal after creation
-      this.newCardTitle = ''; // reset title
+    async createCard() {
+      const card = {
+        front: this.newCardFront,
+        back: this.newCardBack,
+        themeId: this.selectedTheme.id
+      };
+      try {
+        await addCard(card);
+        console.log('Card successfully created:', card);
+        this.showCreateCardModal = false;
+        this.newCardFront = '';
+        this.newCardBack = '';
+      } catch (error) {
+        console.error('Failed to create card:', error);
+      }
+    },
+
+    closeModal() {
+      this.showCreateCardModal = false;
+      this.newCardFront = '';
+      this.newCardBack = '';
     },
     launchSession() {
       console.log('Launching session for', this.selectedTheme.title);
-    },
-    addCard() {
-      console.log('Adding card...');
     }
   }
 }
@@ -313,12 +325,13 @@ ul {
 }
 
 .level-selector {
-  display: flex;
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  overflow: hidden;
-  margin-top: 20px;
-  width: 70%;
+    display: flex;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 20px;
+    width: 70%;
+    background-color: white;
 }
 
 .level-selector input[type="radio"] {
@@ -337,8 +350,9 @@ ul {
 }
 
 .level-selector input[type="radio"]:checked + label {
-  background-color: #686565;
-  color: white;
+    background-color: #686565;
+    color: white;
+    border-radius: 20px;
 }
 
 .backgrey{

@@ -1,15 +1,20 @@
 import { openDB } from 'idb';
-
-const dbPromise = openDB('memory-project', 1, {
-  upgrade(db) {
-    // Create 'categories' object store if it doesn't exist
-    if (!db.objectStoreNames.contains('categories')) {
-      db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
+const dbPromise = openDB('memory-project', 2, { // Changez le numéro de version ici
+  upgrade(db, oldVersion) {
+    if (oldVersion < 1) {
+      if (!db.objectStoreNames.contains('categories')) {
+        db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains('themes')) {
+        const themeStore = db.createObjectStore('themes', { keyPath: 'id', autoIncrement: true });
+        themeStore.createIndex('categoryId', 'categoryId', { unique: false });
+      }
     }
-    // Create 'themes' object store if it doesn't exist
-    if (!db.objectStoreNames.contains('themes')) {
-      const themeStore = db.createObjectStore('themes', { keyPath: 'id', autoIncrement: true });
-      themeStore.createIndex('categoryId', 'categoryId', { unique: false });
+    if (oldVersion < 2) {
+      if (!db.objectStoreNames.contains('cards')) {
+        const cardStore = db.createObjectStore('cards', { keyPath: 'id', autoIncrement: true });
+        cardStore.createIndex('themeId', 'themeId', { unique: false });
+      }
     }
   },
 });
@@ -57,6 +62,8 @@ export async function deleteCategory(id) {
   return tx.done;
 }
 
+
+
 export async function getThemesForCategory(categoryId) {
   const db = await dbPromise;
   const tx = db.transaction('themes', 'readonly');
@@ -77,4 +84,14 @@ export async function addTheme(theme) {
 // Permet de supprimer un thème
 export async function deleteTheme(id) {
   return (await dbPromise).delete('themes', id);
+}
+
+
+// Permet de créer une nouvelle carte
+export async function addCard(card) {
+  const db = await dbPromise;
+  const tx = db.transaction('cards', 'readwrite');
+  const store = tx.objectStore('cards');
+  await store.add(card);
+  return tx.done;
 }
