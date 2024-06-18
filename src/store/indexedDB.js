@@ -1,10 +1,12 @@
 import { openDB } from 'idb';
 
 const dbPromise = openDB('memory-project', 1, {
-  upgrade(db /*, oldVersion, newVersion, transaction*/) {
+  upgrade(db) {
+    // Create 'categories' object store if it doesn't exist
     if (!db.objectStoreNames.contains('categories')) {
       db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
     }
+    // Create 'themes' object store if it doesn't exist
     if (!db.objectStoreNames.contains('themes')) {
       const themeStore = db.createObjectStore('themes', { keyPath: 'id', autoIncrement: true });
       themeStore.createIndex('categoryId', 'categoryId', { unique: false });
@@ -12,14 +14,35 @@ const dbPromise = openDB('memory-project', 1, {
   },
 });
 
-
 // CRUD FUNCTIONS
 
 
 // Permet de récupérer toutes les catégories
 export async function getCategories() {
-  return (await dbPromise).getAll('categories');
+  try {
+    const db = await dbPromise;
+    const tx = db.transaction('categories', 'readonly');
+    const store = tx.objectStore('categories');
+    return await store.getAll();
+  } catch (error) {
+    console.error('Failed to fetch categories:', error);
+    return [];
+  }
 }
+
+// permet de récupérer tout les thèmes
+export async function getThemes() {
+  try {
+    const db = await dbPromise;
+    const tx = db.transaction('themes', 'readonly');
+    const store = tx.objectStore('themes');
+    return await store.getAll();
+  } catch (error) {
+    console.error('Failed to fetch themes:', error);
+    return [];
+  }
+}
+
 
 // Permet d'ajouter une catégorie
 export async function addCategory(category) {
@@ -34,18 +57,23 @@ export async function deleteCategory(id) {
   return tx.done;
 }
 
-// Permet d'ajouter un thème
-export async function addTheme(theme) {
-  return (await dbPromise).add('themes', theme);
-}
-
-// Permet de recupérer les thèmes pour une catégorie
 export async function getThemesForCategory(categoryId) {
   const db = await dbPromise;
-  const index = db.transaction('themes').objectStore('themes').index('categoryId');
-  return index.getAll(categoryId);
+  const tx = db.transaction('themes', 'readonly');
+  const store = tx.objectStore('themes');
+  const index = store.index('categoryId');
+  // Convert categoryId to a number if it is not already
+  const numericCategoryId = Number(categoryId);
+  return await index.getAll(numericCategoryId);
 }
 
+export async function addTheme(theme) {
+  const db = await dbPromise;
+  const tx = db.transaction('themes', 'readwrite');
+  const store = tx.objectStore('themes');
+  await store.add(theme);
+  return tx.done;
+}
 // Permet de supprimer un thème
 export async function deleteTheme(id) {
   return (await dbPromise).delete('themes', id);

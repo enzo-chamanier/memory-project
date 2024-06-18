@@ -4,48 +4,67 @@
       <h2>Catégories</h2>
       <button @click="openModalCreate" class="plusCreate">+</button>
     </div>
-    <ul>
-      <li class="licat" 
-          v-for="category in categories" 
-          :key="category.id"
-          @click="selectCategory(category)"
-          @contextmenu.prevent="markForDeletion(category)"
-          :class="{'active-category': selectedCategory && category.id === selectedCategory.id,
-                   'marked-for-deletion': category.markedForDeletion}">
-        {{ category.markedForDeletion ? 'Supprimer  "' : '' }}{{ category.name }}{{ category.markedForDeletion ? '"' : '' }}
-      </li>
-    </ul>
-
-
     <!-- Modal pour créer une nouvelle catégorie -->
-    <div id="modal" class="modalDialog" v-if="isModalOpen">
+    <div id="modal" class="modalDialog" v-show="isModalOpen">
       <div class="modal-content">
-        <span class="close" @click="closeModal">&times;</span>
+        <div class="modal-header">
+          <h3>Créer une catégorie</h3>
+          <span class="close" @click="closeModal">&times;</span>
+        </div>
         <form @submit.prevent="addCategory">
           <input type="text" v-model="newCategoryName" placeholder="Nom de la catégorie" required>
           <button type="submit">Créer</button>
         </form>
       </div>
     </div>
+    <ul class="category-list">
+      <li class="licat"
+          v-for="category in categories"
+          :key="category.id"
+          @click="selectCategory(category)"
+          @contextmenu.prevent="markForDeletion(category)"
+          :class="{'active-category': selectedCategory && category.id === selectedCategory.id,
+                  'marked-for-deletion': category.markedForDeletion}">
+        {{ category.markedForDeletion ? 'Supprimer' : '' }} {{ category.name }}
+      </li>
+    </ul>
+
+
 
     <!-- Affichage des thèmes pour la catégorie sélectionnée -->
-    <div v-if="selectedCategory" >
+    <div v-if="selectedCategory">
       <div class="modalAddTheme">
         <h2>LES THEMES DE {{ selectedCategory.name }}</h2>
         <button @click="showAddThemeModal" class="plusCreate">+</button>
       </div>
-
-      <ul>
-        <li v-for="theme in themes" :key="theme.id">
+      <!-- Modal pour ajouter un thème -->
+      <div id="themeModal" class="modalDialog" v-show="isThemeModalOpen">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Créer un thème</h3>
+            <span class="close" @click="closeThemeModal">&times;</span>
+          </div>
+          <form @submit.prevent="addTheme">
+            <input type="text" v-model="newThemeTitle" placeholder="Titre du thème" required>
+            <button type="submit">Créer</button>
+          </form>
+        </div>
+      </div>
+      <ul class="category-list">
+        <li class="licat"
+            v-for="theme in themes" :key="theme.id" @click="selectTheme(theme)">
           {{ theme.title }}
         </li>
       </ul>
+
+      
     </div>
   </div>
 </template>
 
+
 <script>
-import { addCategory, getCategories, getThemesForCategory, deleteCategory } from '@/store/indexedDB';
+import { addCategory, getCategories, getThemesForCategory, deleteCategory, addTheme } from '@/store/indexedDB';
 
 export default {
   name: 'CategoriesComponent',
@@ -55,38 +74,46 @@ export default {
       themes: [],
       selectedCategory: null,
       isModalOpen: false,
-      newCategoryName: ''
+      isThemeModalOpen: false,
+      newCategoryName: '',
+      newThemeTitle: ''
     };
   },
   methods: {
-    showAddThemeModal() {
-      this.$emit('showModal', 'addTheme');
-    },
     openModalCreate() {
       this.isModalOpen = true;
     },
     closeModal() {
       this.isModalOpen = false;
     },
-    addCategory() {
-      const newCategory = {
-        id: Date.now(),
-        name: this.newCategoryName
-      };
-      this.categories.push(newCategory);
-      this.saveCategoryToDB(newCategory);
-      this.newCategoryName = '';
-      this.closeModal();
+    showAddThemeModal() {
+      this.isThemeModalOpen = true;
+      console.log('Theme modal is now open:', this.isThemeModalOpen);
     },
-    markForDeletion(category) {
-      this.categories = this.categories.map(cat => {
-        if (cat.id === category.id) {
-          return { ...cat, markedForDeletion: !cat.markedForDeletion };
-        }
-        return cat;
+    closeThemeModal() {
+      this.isThemeModalOpen = false;
+    },
+    addCategory() {
+      const newCategory = { name: this.newCategoryName };
+      addCategory(newCategory).then(() => {
+        this.loadCategories();
+        this.newCategoryName = '';
+        this.closeModal();
+      }).catch(error => {
+        console.error("Failed to save the category", error);
       });
     },
-     selectCategory(category) {
+    addTheme() {
+      const newTheme = { title: this.newThemeTitle, categoryId: this.selectedCategory.id };
+      addTheme(newTheme).then(() => {
+        this.themes.push(newTheme);
+        this.newThemeTitle = '';
+        this.closeThemeModal();
+      }).catch(error => {
+        console.error("Failed to save the theme", error);
+      });
+    },
+    selectCategory(category) {
       if (category.markedForDeletion) {
         deleteCategory(category.id).then(() => {
           this.categories = this.categories.filter(cat => cat.id !== category.id);
@@ -101,6 +128,18 @@ export default {
         this.loadThemes(category.id);
       }
     },
+    selectTheme(theme) {
+      console.log('Selected theme:', theme)
+      this.$router.push({ name: 'Jouer', params: { themeId: theme.id } });
+    },
+    markForDeletion(category) {
+      this.categories = this.categories.map(cat => {
+        if (cat.id === category.id) {
+          return { ...cat, markedForDeletion: !cat.markedForDeletion };
+        }
+        return cat;
+      });
+    },
     loadThemes(categoryId) {
       getThemesForCategory(categoryId).then(themes => {
         this.themes = themes;
@@ -114,18 +153,6 @@ export default {
       }).catch(error => {
         console.error("Failed to fetch categories", error);
       });
-    },
-    saveCategoryToDB(category) {
-      addCategory(category).catch(error => {
-        console.error("Failed to save the category to IndexedDB", error);
-      });
-    }
-  },
-  watch: {
-    categories() {
-      if (this.categories.length === 0) {
-        this.$router.push('/');
-      }
     }
   },
   mounted() {
@@ -135,39 +162,111 @@ export default {
 </script>
 
 
+
+
 <style scoped>
 
-.marked-for-deletion {
-  background-color: rgb(181, 30, 30) !important; /* Fond rouge pour les éléments à supprimer */
-  color: white !important; /* Texte rouge pour les éléments à supprimer */
-} 
-.licat {
-    cursor: pointer;
-    padding: 10px;
-    margin: 5px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    width: 20vw;
-    min-width: 100px;
-    height: 3vh;
-    min-height: 20px;
-    overflow-y: auto;
-    font-size: calc(0.8em + 0.2vw);
 
+.modal-header{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+
+}
+h3{
+  color: #000;
+  font-size: calc(0.5em + 0.5vw);
+
+}
+
+.close {
+    color: #aaa;
+    /* float: right; */
+    display: flex;
+    font-size: 28px;
+    font-weight: bold;
+    flex-direction: row-reverse;
+    margin-right: 10px;
+}
+
+.close:hover {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+.modalDialog {
+  border: 1px solid black;
+  width: 100%;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.marked-for-deletion {
+  background-color: rgb(181, 30, 30);
+  color: white;
+  text-transform: uppercase;
+}
+
+.marked-for-deletion:hover {
+  background-color: rgb(181, 30, 30) !important;
+  color: white !important;
+  border: 2px solid black;
+}
+
+.category-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 0;
+    margin: 0;
+}
+
+/* Étendre le dernier élément sur toute la ligne si seul */
+.category-list li:last-child:only-child,
+.category-list li:nth-last-child(1):nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+
+.licat {
+  cursor: pointer;
+  padding: 10px;
+  margin: 5px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow-y: auto;
+  width: 15vw;
+  font-size: calc(0.8em + 0.2vw);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.licat:hover {
+  background-color: #D9D9D9;
 }
 
 .active-category {
-  background-color: #f0f0f0; /* Couleur de fond pour la catégorie active */
-  color: #333; /* Couleur de texte pour la catégorie active */
-  border-radius: 8px; /* Arrondi des coins si nécessaire */
-  border: 1px solid #ddd; /* Bordure pour mettre en évidence */
+  background-color: #9E9E9E;
+  color: #333;
+  border-radius: 8px;
+  border: 1px solid #ddd;
 }
+
+
 
 h2 {
   text-transform: uppercase;
 }
 
-button {
+ul {
+    width: unset !important;
+}
+
+.header button, .modalAddTheme button {
   width: unset;
   min-width: unset;
   border-radius: 50%;
@@ -177,42 +276,28 @@ button {
   max-width: 50px;
   font-size: calc(1.1em + 1vw);
   display: flex;
-  /* align-content: center; */
   align-items: center;
   justify-content: center;
 }
+
 .categories .header {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: row;
-    gap: 10px;
-    border:none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  gap: 10px;
+  border-bottom:none;
 }
 
 .plusCreate {
-    margin:0;
-}
-
-.modalDialog {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
-  display: none;
+  margin: 0;
 }
 
 .modalAddTheme {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
 }
 
-.modalDialog[style*="display: block"] {
-  display: block;
-}
 </style>

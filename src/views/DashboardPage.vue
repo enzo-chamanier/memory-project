@@ -4,21 +4,21 @@
       :categories="categories" 
       @showModal="handleShowModal"
       @deleteCategory="handleDeleteCategory" />
-    <themes-component 
+    <!-- <themes-component 
       :themes="selectedCategoryThemes" 
       @showModal="handleShowModal"
-      @deleteTheme="handleDeleteTheme" />
+      @deleteTheme="handleDeleteTheme" /> -->
   </div>
 </template>
 
 <script>
 import CategoriesComponent from '@/components/CategoriesComponent.vue';
-import ThemesComponent from '@/components/ThemesComponent.vue';
+// import ThemesComponent from '@/components/ThemesComponent.vue';
 
 export default {
   components: {
-    CategoriesComponent,
-    ThemesComponent
+    CategoriesComponent
+    // ,ThemesComponent
   },
   data() {
     return {
