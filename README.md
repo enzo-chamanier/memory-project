@@ -1,5 +1,8 @@
 # MEMORY FLASHCARDS
 
+Memory Flashcards est une application web qui permet aux utilisateurs de créer, lire, mettre à jour et supprimer des cartes mémoire. Les utilisateurs peuvent organiser leurs cartes en catégories et en thèmes pour une meilleure organisation.
+L'utilisateur peut également tester ses connaissances en lançant des sessions de révision.
+
 ## Déploiement
 
 Pour déployer ce projet, suivez les étapes suivantes :
