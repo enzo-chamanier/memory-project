@@ -44,11 +44,35 @@
             <input type="radio" id="level2" name="level" value="2" v-model="selectedLevel">
             <label for="level2">Bof</label>
             <input type="radio" id="level3" name="level" value="3" v-model="selectedLevel">
-            <label for="level3">Ça va</label>
+            <label for="level3">Ca va</label>
             <input type="radio" id="level4" name="level" value="4" v-model="selectedLevel">
             <label for="level4">Je maîtrise</label>
           </div>
         </div>
+        <!-- Display cards here -->
+<!-- Display cards here -->
+<div class="cards-grid" v-if="cards.length > 0">
+  <div v-for="card in cards" :key="card.id" class="card"
+       @contextmenu.prevent="markCardForDeletion(card)"
+       :class="{ 'marked-for-deletion': card.markedForDeletion }">
+    <div v-show="!card.showBack">
+      <p>RECTO</p>
+      <p>{{ card.front }}</p>
+    </div>
+    <div v-show="card.showBack">
+      <p>VERSO</p>
+      <p>{{ card.back }}</p>
+    </div>
+  </div>
+</div>
+
+
+
+        <!-- Show message if no cards are available -->
+        <div v-else class="card-details">
+          <p>Aucune carte trouvée pour ce thème.</p>
+        </div>
+
       </div>
     </section>
     <section v-else class="theme-details">
@@ -58,13 +82,14 @@
 </template>
 
 <script>
-import { getThemes, addCard } from '@/store/indexedDB';
+import { getThemes, getCardsForTheme, addCard, deleteCardFromTheme } from '@/store/indexedDB';
 
 export default {
   data() {
     return {
       themes: [],
       selectedTheme: null,
+      cards: [],  // Initially empty, will be populated and modified after fetching
       selectedLevel: 1,
       levels: [1, 2, 3, 4],
       showCreateCardModal: false,
@@ -76,7 +101,7 @@ export default {
     this.loadThemes();
   },
   methods: {
-        async loadThemes() {
+    async loadThemes() {
       try {
         this.themes = await getThemes();
         this.selectThemeById();
@@ -84,21 +109,39 @@ export default {
         console.error('Error retrieving themes:', error);
       }
     },
-    selectThemeById() {
+    toggleCard(card) {
+      card.showBack = !card.showBack;
+    },
+    async selectThemeById() {
       const themeId = parseInt(this.$route.params.themeId, 10);
-      if (isNaN(themeId)) {
-        console.error('Invalid theme ID provided:', this.$route.params.themeId);
-        return;
-      }
-      const foundTheme = this.themes.find(theme => theme.id === themeId);
-      if (foundTheme) {
-        this.selectedTheme = foundTheme;
+      if (!isNaN(themeId)) {
+        const foundTheme = this.themes.find(theme => theme.id === themeId);
+        if (foundTheme) {
+          this.selectedTheme = foundTheme;
+          try {
+            let fetchedCards = await getCardsForTheme(themeId);
+            this.cards = fetchedCards.map(card => ({ ...card, markedForDeletion: false }));
+          } catch (error) {
+            console.error('Error retrieving cards for theme:', error);
+            this.cards = [];
+          }
+        } else {
+          console.error('Theme not found with ID:', themeId);
+          this.cards = [];
+        }
       } else {
-        console.error('Theme not found with ID:', themeId);
+        console.error('Invalid theme ID provided:', this.$route.params.themeId);
+        this.cards = [];
       }
     },
-    selectTheme(theme) {
+    async selectTheme(theme) {
       this.selectedTheme = theme;
+      try {
+        this.cards = await getCardsForTheme(theme.id);
+      } catch (error) {
+        console.error('Error retrieving cards for theme:', error);
+        this.cards = [];
+      }
       this.$router.push({ name: 'Jouer', params: { themeId: theme.id } });
     },
     home() {
@@ -112,6 +155,7 @@ export default {
       };
       try {
         await addCard(card);
+        this.cards.push(card); // Add the new card to the cards array immediately after creation
         console.log('Card successfully created:', card);
         this.showCreateCardModal = false;
         this.newCardFront = '';
@@ -119,6 +163,19 @@ export default {
       } catch (error) {
         console.error('Failed to create card:', error);
       }
+    },
+    async deleteCardFromTheme(card) {
+      try {
+        await deleteCardFromTheme(card.id);
+        this.cards = this.cards.filter(c => c.id !== card.id); // Filter out the card to delete
+        console.log('Card successfully deleted:', card);
+      } catch (error) {
+        console.error('Failed to delete card:', error);
+      }
+    },
+    async markCardForDeletion(card) {
+      card.markedForDeletion = !card.markedForDeletion; // Toggle deletion mark on right-click
+      console.log(`Card ID: ${card.id}`); // Log the card ID
     },
 
     closeModal() {
@@ -131,11 +188,14 @@ export default {
     }
   }
 }
+
 </script>
 
 <style scoped>
 
-
+.marked-for-deletion {
+  background-color: red; /* Visually indicate the card is marked for deletion */
+}
 .modal {
   display: flex;
   justify-content: center;
@@ -246,9 +306,17 @@ input[type="text"] {
   border-top: 1px solid black;
 }
 
+.card-details p{
+      display: flex;
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    font-size: calc(0.7em + 0.5vw);
+}
+
 .theme-details p {
-      margin: 0;
-    height: 80.5vh;
+    margin: 0;
+    height: 40.5vh;
     display: flex;
     align-content: center;
     justify-content: center;
@@ -298,13 +366,56 @@ input[type="text"] {
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 20px;
+  padding: 20px;
 }
 
 .card {
-  height: 100px;
-  background-color: #ccc;
+  background-color: blue; /* No background color for the card container */
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  height: 150px;
+  perspective: 1000px; 
+  width: 20vw;
+
 }
+
+.card > div {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  backface-visibility: hidden;
+  transition: transform 1s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.card > div:first-child {
+  background-color: #D9D9D9; 
+  transform: rotateY(0deg);
+}
+
+.card > div:last-child {
+  background-color: #ACACAC;
+  color: white; 
+}
+
+.card.showBack > div:first-child {
+  transform: rotateY(180deg); 
+}
+
+.card.showBack > div:last-child {
+  transform: rotateY(0deg); 
+}
+
 
 .add-card {
   background-color: red;

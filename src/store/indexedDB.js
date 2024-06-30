@@ -95,3 +95,19 @@ export async function addCard(card) {
   await store.add(card);
   return tx.done;
 }
+
+// Permet de récupérer toutes les cartes d'un thème
+export async function getCardsForTheme(themeId) {
+  const db = await dbPromise;
+  const tx = db.transaction('cards', 'readonly');
+  const store = tx.objectStore('cards');
+  const index = store.index('themeId');
+  // Convert themeId to a number if it is not already
+  const numericThemeId = Number(themeId);
+  return await index.getAll(numericThemeId);
+}
+
+// permet de supprimer une carte d'un thème
+export async function deleteCardFromTheme(id) {
+  return (await dbPromise).delete('cards', id);
+}
