@@ -24,7 +24,6 @@ export default {
     return {
       categories: [],
       selectedCategoryThemes: [],
-      // Supposons que vous chargiez ces données à partir d'une API ou d'une IndexedDB
     };
   },
   methods: {

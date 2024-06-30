@@ -1,24 +1,44 @@
 import { openDB } from 'idb';
-const dbPromise = openDB('memory-project', 2, { // Changez le numéro de version ici
+const defaultData = {
+  categories: [
+    { id: 1, name: 'Français' },
+    { id: 2, name: 'Mathématiques' },
+  ],
+  themes: [
+    { id: 1, categoryId: 1, title: 'Littérature' },
+    { id: 2, categoryId: 1, title: 'Grammaire' },
+    { id: 3, categoryId: 2, title: 'Algèbre' },
+    { id: 4, categoryId: 2, title: 'Géométrie' },
+  ],
+  cards: [
+    { id: 1, themeId: 1, front: 'Qui est l\'auteur de "Les Misérables"?', back: 'Victor Hugo' },
+    { id: 2, themeId: 2, front: 'Quelle est la nature du complément circonstanciel?', back: 'Il indique les circonstances de l\'action.' },
+    { id: 3, themeId: 3, front: 'Résolvez l\'équation x^2 - 5x + 6 = 0', back: 'x = 2 ou x = 3' },
+    { id: 4, themeId: 4, front: 'Quelle est la somme des angles dans un triangle?', back: '180 degrés' },
+  ],
+};
+const dbPromise = openDB('memory-project', 2, {
   upgrade(db, oldVersion) {
     if (oldVersion < 1) {
       if (!db.objectStoreNames.contains('categories')) {
-        db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
+        const categoryStore = db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
+        defaultData.categories.forEach(category => categoryStore.put(category));
       }
       if (!db.objectStoreNames.contains('themes')) {
         const themeStore = db.createObjectStore('themes', { keyPath: 'id', autoIncrement: true });
         themeStore.createIndex('categoryId', 'categoryId', { unique: false });
+        defaultData.themes.forEach(theme => themeStore.put(theme));
       }
     }
     if (oldVersion < 2) {
       if (!db.objectStoreNames.contains('cards')) {
         const cardStore = db.createObjectStore('cards', { keyPath: 'id', autoIncrement: true });
         cardStore.createIndex('themeId', 'themeId', { unique: false });
+        defaultData.cards.forEach(card => cardStore.put(card));
       }
     }
   },
 });
-
 // CRUD FUNCTIONS
 
 
@@ -51,7 +71,12 @@ export async function getThemes() {
 
 // Permet d'ajouter une catégorie
 export async function addCategory(category) {
-  return (await dbPromise).add('categories', category);
+  const db = await dbPromise;
+  const tx = db.transaction('categories', 'readwrite');
+  const store = tx.objectStore('categories');
+  const result = await store.add(category);
+  await tx.done;
+  return result; // This should be the ID of the new category
 }
 
 // Permet de supprimer une catégorie
@@ -78,8 +103,9 @@ export async function addTheme(theme) {
   const db = await dbPromise;
   const tx = db.transaction('themes', 'readwrite');
   const store = tx.objectStore('themes');
-  await store.add(theme);
-  return tx.done;
+  const result = await store.add(theme);
+  await tx.done;
+  return result; // This should be the ID of the new theme
 }
 // Permet de supprimer un thème
 export async function deleteTheme(id) {
@@ -110,4 +136,12 @@ export async function getCardsForTheme(themeId) {
 // permet de supprimer une carte d'un thème
 export async function deleteCardFromTheme(id) {
   return (await dbPromise).delete('cards', id);
+}
+
+export async function getThemeById(themeId) {
+  const db = await dbPromise;
+  const tx = db.transaction('themes', 'readonly');
+  const store = tx.objectStore('themes');
+  const theme = await store.get(themeId);
+  return theme;
 }

@@ -103,15 +103,20 @@ export default {
         console.error("Failed to save the category", error);
       });
     },
-    addTheme() {
-      const newTheme = { title: this.newThemeTitle, categoryId: this.selectedCategory.id };
-      addTheme(newTheme).then(() => {
-        this.themes.push(newTheme);
+    async addTheme() {
+      const newTheme = {
+        title: this.newThemeTitle,
+        categoryId: this.selectedCategory.id,
+      };
+      try {
+        const themeId = await addTheme(newTheme);
+        this.themes.push({ ...newTheme, id: themeId });
         this.newThemeTitle = '';
-        this.closeThemeModal();
-      }).catch(error => {
-        console.error("Failed to save the theme", error);
-      });
+        this.isThemeModalOpen = false;
+        this.$router.push({ name: 'Jouer', params: { themeId } });
+      } catch (error) {
+        console.error("Failed to add theme", error);
+      }
     },
     selectCategory(category) {
       if (category.markedForDeletion) {

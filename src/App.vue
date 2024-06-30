@@ -1,7 +1,7 @@
 
 
 <template>
-
+  <link rel="manifest" href="/manifest.json">
   <div class="header">
 
         <h2>MEMO FLASHCARDS</h2>

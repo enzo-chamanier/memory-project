@@ -1,6 +1,6 @@
 <template>
-  <div class="theme-page">
-    <aside class="theme-list">
+  <div class="theme-page" :class="{ 'fullscreen': isFullscreen }">
+    <aside class="theme-list" v-if="!isFullscreen">
       <h1 class="sticky-header">THEMES</h1>
       <ul>
         <li v-for="theme in themes" :key="theme.id" @click="selectTheme(theme)" 
@@ -10,10 +10,12 @@
       </ul>
     </aside>
     <section v-if="selectedTheme" class="theme-details">
+      <div class="timer">{{ timer }}</div>
+
       <div class="theme-header">
         <h2>Votre thème : {{ selectedTheme.title }}</h2>
-        <div class="backgrey">
-          <div class="theme-actions">
+        <div class="backgrey" v-if="!isFullscreen">
+          <div class="theme-actions" >
             <button @click="home">Accueil</button>
             <button @click="showCreateCardModal = true">Créer une carte</button>
             <!-- Modal Popup for Creating Card -->
@@ -38,33 +40,26 @@
             </div>
             <button @click="launchSession">Lancer la session de révision</button>
           </div>
-          <div class="level-selector">
-            <input type="radio" id="level1" name="level" value="1" v-model="selectedLevel">
-            <label for="level1">Novice</label>
-            <input type="radio" id="level2" name="level" value="2" v-model="selectedLevel">
-            <label for="level2">Bof</label>
-            <input type="radio" id="level3" name="level" value="3" v-model="selectedLevel">
-            <label for="level3">Ca va</label>
-            <input type="radio" id="level4" name="level" value="4" v-model="selectedLevel">
-            <label for="level4">Je maîtrise</label>
-          </div>
+      
         </div>
         <!-- Display cards here -->
-<!-- Display cards here -->
-<div class="cards-grid" v-if="cards.length > 0">
-  <div v-for="card in cards" :key="card.id" class="card"
-       @contextmenu.prevent="markCardForDeletion(card)"
-       :class="{ 'marked-for-deletion': card.markedForDeletion }">
-    <div v-show="!card.showBack">
-      <p>RECTO</p>
-      <p>{{ card.front }}</p>
-    </div>
-    <div v-show="card.showBack">
-      <p>VERSO</p>
-      <p>{{ card.back }}</p>
-    </div>
-  </div>
-</div>
+         <div class="cards-grid" v-if="cards.length > 0">
+          <div v-for="card in cards" :key="card.id" class="card"
+              :class="{ 'marked-for-deletion': card.markedForDeletion, 'flipped': card.showBack }"
+              @contextmenu.prevent="markCardForDeletion(card)"
+              @click="toggleCardSide(card)">
+            <div class="card-face card-front">
+              RECTO <br><br>{{ card.front }}
+            </div>
+            <div class="card-face card-back">
+              VERSO <br><br>{{ card.back }}
+              <div class="level-selector">
+                <button @click.stop="handleSuccess(card)">J'ai réussi</button>
+                <button @click.stop="handleFailure(card)">J'ai eu faux</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
 
 
@@ -82,14 +77,15 @@
 </template>
 
 <script>
-import { getThemes, getCardsForTheme, addCard, deleteCardFromTheme } from '@/store/indexedDB';
+import { getThemesForCategory,getThemeById, getCardsForTheme, addCard, deleteCardFromTheme } from '@/store/indexedDB';
 
 export default {
   data() {
     return {
       themes: [],
       selectedTheme: null,
-      cards: [],  // Initially empty, will be populated and modified after fetching
+      isFullscreen: false,
+      cards: [],  
       selectedLevel: 1,
       levels: [1, 2, 3, 4],
       showCreateCardModal: false,
@@ -101,17 +97,27 @@ export default {
     this.loadThemes();
   },
   methods: {
-    async loadThemes() {
-      try {
-        this.themes = await getThemes();
-        this.selectThemeById();
-      } catch (error) {
-        console.error('Error retrieving themes:', error);
+  async loadThemes() {
+    try {
+      const themeId = parseInt(this.$route.params.themeId, 10);
+      if (isNaN(themeId)) {
+        console.error('Invalid theme ID:', this.$route.params.themeId);
+        throw new Error('Invalid theme ID');
       }
-    },
-    toggleCard(card) {
-      card.showBack = !card.showBack;
-    },
+      const theme = await getThemeById(themeId);
+      if (!theme) {
+        console.error('Theme not found:', themeId);
+        throw new Error('Theme not found');
+      }
+      this.themes = await getThemesForCategory(theme.categoryId);
+      this.selectThemeById(themeId);
+    } catch (error) {
+      console.error('Error retrieving themes:', error);
+    }
+  },
+  toggleCardSide(card) {
+    card.showBack = !card.showBack;
+  },
     async selectThemeById() {
       const themeId = parseInt(this.$route.params.themeId, 10);
       if (!isNaN(themeId)) {
@@ -151,7 +157,8 @@ export default {
       const card = {
         front: this.newCardFront,
         back: this.newCardBack,
-        themeId: this.selectedTheme.id
+        themeId: this.selectedTheme.id,
+        level: 0 // Default level set to 0 for new cards
       };
       try {
         await addCard(card);
@@ -160,6 +167,8 @@ export default {
         this.showCreateCardModal = false;
         this.newCardFront = '';
         this.newCardBack = '';
+
+        window.location.reload();
       } catch (error) {
         console.error('Failed to create card:', error);
       }
@@ -173,19 +182,46 @@ export default {
         console.error('Failed to delete card:', error);
       }
     },
-    async markCardForDeletion(card) {
-      card.markedForDeletion = !card.markedForDeletion; // Toggle deletion mark on right-click
-      console.log(`Card ID: ${card.id}`); // Log the card ID
+     async markCardForDeletion(card) {
+      if (card.markedForDeletion) {
+        await this.deleteCardFromTheme(card);
+      } else {
+        card.markedForDeletion = true;
+        console.log(`Card ID: ${card.id}`); // Log the card ID
+      }
     },
-
     closeModal() {
       this.showCreateCardModal = false;
       this.newCardFront = '';
       this.newCardBack = '';
     },
-    launchSession() {
-      console.log('Launching session for', this.selectedTheme.title);
+     launchSession() {
+      this.isFullscreen = true;
+      this.startTimer();
+    },
+    startTimer() {
+      setInterval(() => {
+        this.timer++;
+      }, 1000);
+    },
+    closeSession() {
+      this.isFullscreen = false;
+    },
+
+    handleSuccess(card) {
+      if (card.level < this.levels.length) {
+        card.level += 1;
+      }
+      console.log(`Succès ! Le niveau pour la carte ${card.id} est maintenant ${card.level}`);
+    },
+
+    handleFailure(card) {
+      if (card.level > 0) {
+        card.level -= 1;
+      }
+      console.log(`Échec. Le niveau pour la carte ${card.id} est maintenant ${card.level}`);
     }
+
   }
 }
 
@@ -193,9 +229,55 @@ export default {
 
 <style scoped>
 
-.marked-for-deletion {
-  background-color: red; /* Visually indicate the card is marked for deletion */
+button{
+  min-width: 90px;
+  width: 12vw;
 }
+
+
+.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: white;
+}
+
+.card {
+  transition: transform 0.3s;
+  transform-style: preserve-3d;
+}
+
+.card.flipped .card-front {
+  transform: rotateY(180deg);
+}
+
+.card.flipped .card-back {
+  transform: rotateY(0deg);
+}
+
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+}
+
+.card-front {
+  background-color: #D9D9D9;
+}
+
+.card-back {
+  background-color: #ACACAC;
+  color: white;
+  transform: rotateY(180deg);
+}
+
+.marked-for-deletion {
+  background-color: red !important;}
+
 .modal {
   display: flex;
   justify-content: center;
@@ -241,6 +323,14 @@ input[type="text"] {
 
 .level-selector {
   display: flex;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 20px;
+  width: 70%;
+  background-color: white;
+  flex-direction: column;
+  align-items: center;
 }
 
 .level-button {
@@ -371,17 +461,17 @@ input[type="text"] {
 }
 
 .card {
-  background-color: blue; /* No background color for the card container */
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  height: 150px;
-  perspective: 1000px; 
-  width: 20vw;
-
+    background-color: rgba(23, 23, 23, 0.462);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    min-height: 250PX;
+    perspective: 1000px;
+    width: 20vw;
+    min-width: 160px;
 }
 
 .card > div {
@@ -438,7 +528,7 @@ ul {
 .level-selector {
     display: flex;
     border: 1px solid #ccc;
-    border-radius: 20px;
+    border-radius: 5px;
     overflow: hidden;
     margin-top: 20px;
     width: 70%;
