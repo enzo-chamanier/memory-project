@@ -1,24 +1,25 @@
-# memory-project
+# MEMORY FLASHCARDS
 
-## Project setup
-```
-npm install
-```
+## Déploiement
 
-### Compiles and hot-reloads for development
-```
-npm run serve
-```
+Pour déployer ce projet, suivez les étapes suivantes :
 
-### Compiles and minifies for production
-```
-npm run build
-```
+1. Clonez le dépôt à partir de la plateforme git.
+2. Installez les dépendances nécessaires avec la commande `npm i`.
+3. Lancez le projet avec la commande `npm run serve`.
 
-### Lints and fixes files
-```
-npm run lint
-```
+## Fonctionnalités
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+Ce projet comprend les fonctionnalités suivantes :
+
+- **Catégories** : Les utilisateurs peuvent créer, lire, mettre à jour et supprimer des catégories.
+- **Thèmes** : Les utilisateurs peuvent créer, lire, mettre à jour et supprimer des thèmes.
+- **Cartes** : Les utilisateurs peuvent créer, lire, mettre à jour et supprimer des cartes.
+
+## Organisation du code
+
+Le code est organisé en plusieurs composants pour faciliter la maintenance et l'évolutivité. Chaque fonctionnalité (catégories, thèmes, cartes) a son propre ensemble de composants, ce qui permet une séparation claire des préoccupations.
+
+## Données de test
+
+Le projet comprend déjà des données de test pour les catégories, les thèmes et les cartes. Ces données peuvent être utilisées pour tester les différentes fonctionnalités du projet.
