@@ -16,7 +16,7 @@ Ce projet comprend les fonctionnalités suivantes :
 - **Thèmes** : Les utilisateurs peuvent créer, lire, mettre à jour et supprimer des thèmes.
 - **Cartes** : Les utilisateurs peuvent créer, lire, mettre à jour et supprimer des cartes.
 
-## Organisation du code
+## Organisation du code et des composants
 
 Le code est organisé en plusieurs composants pour faciliter la maintenance et l'évolutivité. Chaque fonctionnalité (catégories, thèmes, cartes) a son propre ensemble de composants, ce qui permet une séparation claire des préoccupations.
 
