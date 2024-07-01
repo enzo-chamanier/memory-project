@@ -24,7 +24,7 @@ Ce projet comprend les fonctionnalités suivantes :
     - Pour supprimer une carte, l'utilisateur doit effectuer un double clic droit sur la carte.
     - Pour lire une carte, l'utilisateur doit effectuer un double clic gauche sur la carte pour switch entre les faces de la carte.
 
-- **Sessions de révision** : Les utilisateurs peuvent lancer des sessions de révision pour tester leurs connaissances en cliquant sur le bouton "Lancer une session de révision". Les cartes sont affichées dans un ordre calculé algorithmiquement pour maximiser la mémorisation.
+- **Sessions de révision** (fonctionne pas car pas eu assez de temps pour terminer et j'arrivais pas trop) : Les utilisateurs peuvent lancer des sessions de révision pour tester leurs connaissances en cliquant sur le bouton "Lancer une session de révision". Les cartes sont affichées dans un ordre calculé algorithmiquement pour maximiser la mémorisation.
 Par défaut, le niveau d'une carte est défini à 0. Lorsqu'un utilisateur a eu juste il coche la case "J'ai eu juste" et le niveau de la carte est incrémenté de 1. Lorsqu'un utilisateur a eu faux il coche la case "J'ai eu faux" et le niveau de la carte est décrémenté de 1. Lorsque le niveau d'une carte est supérieur à 2, la carte est retirée de la session de révision et n'est affichée que si l'utilisateur relance une session de révision en fonction du jour n+1.
 
 ## Organisation du code et des composants
